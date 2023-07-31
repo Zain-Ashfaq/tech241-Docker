@@ -170,7 +170,119 @@ You can check the status of the deployments and services using the following com
 
 ```bash
 
+
+
 kubectl get deployment  # Check running deployments
 kubectl get pods       # Check running pods
 kubectl get svc        # Check services and their information
+```
+
+# Connecting app to MongoDB
+
+## Step 1: Create PVC for MongoDB
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+```
+## To create the PVC, run the following command:
+
+```bash
+
+kubectl create -f mongodb-pvc.yml
+Step 2: Create Mongo Deployment
+yaml
+Copy code
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: zain453/mongodb
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: storage
+              mountPath: /data/db
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: mongo-db
+```
+## Step 3: Create Mongo Service
+```yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+```
+## Step 4: Create Node Deployment
+```yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node
+spec:
+  selector:
+    matchLabels:
+      app: node
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: node
+    spec:
+      containers:
+        - name: node
+          image: majeranowski/tech241-node-app:v1
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_HOST
+              value: mongodb://mongo:27017/posts
+          imagePullPolicy: Always
+```
+## Step 5: Create Node Service
+```yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-svc
+  namespace: default
+spec:
+  ports:
+    - nodePort: 30002 # range is 30000 - 32768
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: node
+  type: NodePort # also use LoadBalancer - for local use ClusterIP
 ```
