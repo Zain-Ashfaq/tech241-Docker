@@ -261,7 +261,7 @@ spec:
     spec:
       containers:
         - name: node
-          image: majeranowski/tech241-node-app:v1
+          image: zain453/tech241-sparta-app
           ports:
             - containerPort: 3000
           env:
