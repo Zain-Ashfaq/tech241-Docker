@@ -78,4 +78,99 @@ Push the Image to Docker Hub: Push the updated image to Docker Hub using the doc
 
 docker push username/repository:tag
 ```
-Replace <container_id> with the ID of the container you made changes to, <new_image_name> with the desired name for the new image, <tag> with a specific tag for versioning, and username/repository:tag with your Docker Hub username, repository name, and tag for the final image in the Docker Hub repository.
+# Creating K8 Deployment for NGINX:
+```yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: majeranowski/tech241-nginx:v1
+        ports:
+        - containerPort: 80
+```
+## Creating K8 Deployment for NODE:
+```yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: node
+  template:
+    metadata:
+      labels:
+        app: node
+    spec:
+      containers:
+      - name: node
+        image: majeranowski/tech241-node-app:v1
+        ports:
+        - containerPort: 3000
+```
+## Creating NGINX Service:
+```yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+  namespace: default
+spec:
+  ports:
+  - nodePort: 30001
+    port: 80
+    targetPort: 80
+  selector:
+    app: nginx
+  type: NodePort
+Creating NODE Service:
+yaml
+Copy code
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-svc
+  namespace: default
+spec:
+  ports:
+  - nodePort: 30002
+    port: 3000
+    targetPort: 3000
+  selector:
+    app: node
+  type: NodePort
+```
+After writing the YAML files for each service, you can create the services using the following commands:
+
+```bash
+
+kubectl create -f nginx-k8.yml  # Creating the NGINX deployment
+kubectl create -f node-k8.yml   # Creating the NODE deployment
+kubectl create -f nginx-service.yml  # Creating the NGINX service
+kubectl create -f node-service.yml   # Creating the NODE service
+```
+You can check the status of the deployments and services using the following commands:
+
+```bash
+
+kubectl get deployment  # Check running deployments
+kubectl get pods       # Check running pods
+kubectl get svc        # Check services and their information
+```
