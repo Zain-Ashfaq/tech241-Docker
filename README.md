@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: majeranowski/tech241-nginx:v1
+        image: zain453/tech241-nginx
         ports:
         - containerPort: 80
 ```
@@ -120,7 +120,7 @@ spec:
     spec:
       containers:
       - name: node
-        image: majeranowski/tech241-node-app:v1
+        image: zain453/tech241-node-app
         ports:
         - containerPort: 3000
 ```
@@ -286,3 +286,122 @@ spec:
     app: node
   type: NodePort # also use LoadBalancer - for local use ClusterIP
 ```
+# Editing Deployments, Horizontal Pod Autoscaler, and Persistent Volume, Kubernetes Deployment Editing
+To edit and manage deployments, you can use the following kubectl command:
+
+```shell
+
+kubectl edit deployment <name_of_deployment>
+```
+Horizontal Pod Autoscaler (HPA) Configuration
+To configure Horizontal Pod Autoscaler for a deployment, create an HPA manifest as follows:
+
+```yaml
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: node-hpa
+  namespace: default
+spec:
+  maxReplicas: 9
+  minReplicas: 3
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: node
+  targetCPUUtilizationPercentage: 50
+```
+Persistent Volume (PV) and Persistent Volume Claim (PVC) in Kubernetes
+In Kubernetes, PV and PVC work together to provide storage capabilities to your applications. PV is a storage resource, while PVC is a request for storage.
+
+When you need storage space for your application, Kubernetes can automatically find or create the right storage resource based on your PVC requirements.
+
+Here's an example of creating PV and PVC:
+
+Create PV:
+```yaml
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  finalizers:
+  - kubernetes.io/pv-protection
+  labels:
+    type: local
+  name: node-pv 
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /tmp/data
+    type: ""
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
+  storageClassName: manual
+Create PVC:
+yaml
+Copy code
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: node-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+  storageClassName: manual
+```
+Node Deployment Example
+To deploy an application with the PV and PVC, update your deployment manifest like this:
+
+```yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node
+spec:
+  selector:
+    matchLabels:
+      app: node
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: node
+    spec:
+      volumes:
+        - name: node-pv
+          persistentVolumeClaim:
+            claimName: node-pvc
+      containers:
+        - name: node
+          image: zain453/tech241-node-app
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: node-pv
+              mountPath: /tmp/data
+          env:
+            - name: DB_HOST
+              value: mongodb://mongo:27017/posts
+          imagePullPolicy: Always
+```
+Apply the deployment manifest using the following command:
+
+```shell
+
+kubectl apply -f <name_of_the_deployment_file>
+```
+To check the status of PVCs, you can use:
+
+```shell
+
+kubectl get pvc
+```
+This will show the names, statuses, capacities, access modes, and other relevant information of the PVCs in the cluster.
