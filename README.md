@@ -405,3 +405,118 @@ To check the status of PVCs, you can use:
 kubectl get pvc
 ```
 This will show the names, statuses, capacities, access modes, and other relevant information of the PVCs in the cluster.
+# Mongodb whole script
+```yaml
+# Combined YAML file for multiple Kubernetes objects
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sparta-mongo-db-deploy
+  namespace: default
+spec:
+  maxReplicas: 9
+  minReplicas: 3
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mongo
+  targetCPUUtilizationPercentage: 50
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv
+  namespace: default
+  labels:
+    app: mongo
+    type: data
+spec:
+  capacity:
+    storage: 512Mi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /data/mongo-data # Replace this with the desired host path
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-db
+  namespace: default
+  labels:
+    app: mongo
+    type: data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 256Mi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: default
+  labels:
+    app: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: zain453/mongodb
+          ports:
+            - containerPort: 27017
+          resources: # Add resource and limit specifications here
+            requests:
+              memory: "256Mi" # Minimum memory required
+              cpu: "200m"     # 200 milli CPUs (0.2 CPU)
+            limits:
+              memory: "512Mi" # Maximum memory allowed
+              cpu: "1"        # 1 CPU (1000 milli CPUs)
+          volumeMounts:
+            - name: storage
+              mountPath: /data/db
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: mongo-db
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: default
+  labels:
+    app: mongo
+spec:
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+```
+Run these commands and this should appear in the terminal.
+```
+$ kubectl create -f mongo-whole-script.yml
+
+persistentvolume/mongo-pv unchanged
+persistentvolumeclaim/mongo-db created
+deployment.apps/mongo created
+service/mongo created
+```
